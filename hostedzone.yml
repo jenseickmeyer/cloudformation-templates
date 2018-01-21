@@ -1,0 +1,17 @@
+Parameters:
+
+  Domain:
+    Type: String
+  Application:
+    Type: String
+
+Resources:
+
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name:
+        Ref: Domain
+      HostedZoneTags:
+        - Key: "Application"
+          Value: !Ref Application
