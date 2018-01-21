@@ -1,0 +1,87 @@
+Parameters:
+
+  Domain:
+    Type: String
+  CertificateArn:
+    Type: String
+  Application:
+    Type: String
+
+Resources:
+
+  WebsiteContentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "site-${Domain}-content"
+      Tags:
+        - Key: "Application"
+          Value: !Ref Application
+
+  WebsiteLoggingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "site-${Domain}-logging"
+      Tags:
+        - Key: "Application"
+          Value: !Ref Application
+
+  WebsiteContentBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteContentBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: "Allow"
+            Resource: !Sub "arn:aws:s3:::${WebsiteContentBucket}/*"
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${WebsiteCloudFrontOAI}"
+
+  WebsiteCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !Sub "${WebsiteContentBucket}.s3.amazonaws.com"
+            Id: S3Origin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${WebsiteCloudFrontOAI}"
+        DefaultRootObject: index.html
+        Enabled: true
+        Logging:
+          IncludeCookies: false
+          Bucket: !Sub "${WebsiteLoggingBucket}.s3.amazonaws.com"
+          Prefix: logs
+        Aliases:
+          - !Ref Domain
+        HttpVersion: http2
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ForwardedValues:
+            QueryString: false
+          Compress: true
+          ViewerProtocolPolicy: redirect-to-https
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+      Tags:
+        - Key: "Application"
+          Value: !Ref Application
+
+  WebsiteCloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Ref Domain
+
+  CDNRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub "${Domain}."
+      Name: !Sub "${Domain}."
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt WebsiteCDN.DomainName
