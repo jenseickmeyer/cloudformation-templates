@@ -5,6 +5,11 @@ Parameters:
   Application:
     Type: String
 
+Outputs:
+
+  HostedZoneId:
+    Value: !Ref HostedZone
+
 Resources:
 
   HostedZone:
