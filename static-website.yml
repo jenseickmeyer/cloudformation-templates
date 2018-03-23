@@ -1,5 +1,7 @@
 Parameters:
 
+  HostedZoneId:
+    Type: String
   Domain:
     Type: String
   CertificateArn:
@@ -79,7 +81,7 @@ Resources:
   CDNRecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
-      HostedZoneName: !Sub "${Domain}."
+      HostedZoneId: !Ref HostedZoneId
       Name: !Sub "${Domain}."
       Type: A
       AliasTarget:
