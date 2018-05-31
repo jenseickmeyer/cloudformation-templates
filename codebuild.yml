@@ -53,6 +53,8 @@ Resources:
       Artifacts:
         Type: S3
         Location: !Ref ArtifactsBucket
+      Triggers:
+        Webhook: true
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Environment:
         Type: LINUX_CONTAINER
