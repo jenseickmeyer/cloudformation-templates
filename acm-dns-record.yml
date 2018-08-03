@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: A template for adding a CNAME record to a Hosted Zone for supporting ACM DNS validation.
+
+Parameters:
+
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+  RecordSetName:
+    Type: String
+  RecordSetValue:
+    Type: String
+
+Resources:
+  RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref RecordSetName
+      Type: CNAME
+      TTL: '900'
+      ResourceRecords:
+        - !Ref RecordSetValue
