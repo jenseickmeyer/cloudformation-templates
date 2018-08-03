@@ -1,7 +1,7 @@
 Parameters:
 
   HostedZoneId:
-    Type: String
+    Type: AWS::Route53::HostedZone::Id
   Domain:
     Type: String
   CertificateArn:
