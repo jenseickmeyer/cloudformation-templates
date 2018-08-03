@@ -8,6 +8,7 @@ Parameters:
 Outputs:
 
   HostedZoneId:
+    Description: The ID of the Hosted Zone in Route 53
     Value: !Ref HostedZone
 
 Resources:
