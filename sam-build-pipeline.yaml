@@ -22,9 +22,6 @@ Parameters:
       - python2.7
       - python3.6
       - ruby2.5
-  ServiceTag:
-    Type: String
-    Description: The tag for the resources.
 
 Mappings:
   BuildEnvironmentsMap:
@@ -125,9 +122,6 @@ Resources:
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value: !Ref ArtifactsBucket
-      Tags:
-        - Key: service
-          Value: !Ref ServiceTag
 
   ArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -138,9 +132,6 @@ Resources:
           - Id: DeleteBuildArtifactsAfterOneWeek
             ExpirationInDays: 7
             Status: Enabled
-      Tags:
-        - Key: service
-          Value: !Ref ServiceTag
 
   CodePipelineServiceRole:
     Type: AWS::IAM::Role
