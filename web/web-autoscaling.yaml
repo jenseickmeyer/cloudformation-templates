@@ -16,6 +16,8 @@ Parameters:
 
 Resources:
 
+  # TODO: Instance role / profile for CodeDeploy
+
   LaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
@@ -30,6 +32,14 @@ Resources:
             - ''
             - - "#!/bin/bash\n"
               - "yum update -y\n"
+              # Install CodeDeploy Agent
+              - "yum install -y ruby\n"
+              - "yum install -y wget\n"
+              - "cd /home/ec2-user\n"
+              - "wget https://aws-codedeploy-eu-central-1.s3.amazonaws.com/latest/install\n"
+              - "chmod +x ./install\n"
+              - "./install auto\n"
+              - "service codedeploy-agent status\n"
               # Install Docker
               - "yum install -y docker\n"
               - "service docker start\n"
