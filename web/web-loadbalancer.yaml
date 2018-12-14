@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: A CloudFormation template for setting up a Application Load Balancer.
+
+Parameters:
+
+  NetworkStackName:
+    Type: String
+    Description: The name of the network stack
+
+Resources:
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows traffic via HTTP/HTTPS
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: '80'
+          IpProtocol: tcp
+          ToPort: '80'
+        - CidrIp: 0.0.0.0/0
+          FromPort: '443'
+          IpProtocol: tcp
+          ToPort: '443'
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PublicSubnet1
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PublicSubnet2
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PublicSubnet3
+      SecurityGroups:
+        - Fn::GetAtt: LoadBalancerSecurityGroup.GroupId
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: TargetGroup
+      LoadBalancerArn:
+        Ref: LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+Outputs:
+
+  LoadBalancerDnsName:
+    Description: The DNS name of the load balancer
+    Value:
+      Fn::GetAtt: LoadBalancer.DNSName
+
+  LoadBalancer:
+    Description: The ARN of the load balancer
+    Value:
+      Ref: LoadBalancer
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-LoadBalancer
+
+  TargetGroup:
+    Description: The ARN of the target group
+    Value:
+      Ref: TargetGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-TargetGroup
+
+  SecurityGroup:
+    Description: The Id of the security group
+    Value:
+      Fn::GetAtt: LoadBalancerSecurityGroup.GroupId
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-SecurityGroup

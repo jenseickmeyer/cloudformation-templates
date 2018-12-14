@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: A CloudFormation template for setting up an Autoscaling Group of EC2 instances.
+
+Parameters:
+
+  NetworkStackName:
+    Type: String
+    Description: The name of the network stack
+  LoadBalancerStackName:
+    Type: String
+    Description: The name of the load balancer stack
+  InstanceType:
+    Type: String
+    Description: The instance type to use for the EC2 instance
+    Default: t2.micro
+
+Resources:
+
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      InstanceType:
+        Ref: InstanceType
+      ImageId: ami-030aae8cba933aede
+      SecurityGroups:
+        - Fn::GetAtt: WebSecurityGroup.GroupId
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - ''
+            - - "#!/bin/bash\n"
+              - "yum update -y\n"
+              # Install Docker
+              - "yum install -y docker\n"
+              - "service docker start\n"
+              - "systemctl enable docker.service\n"
+              - "usermod -a -G docker ec2-user\n"
+              # Run nginx as a Docker container
+              - "docker run --rm -d -p 80:80 nginx\n"
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName:
+        Ref: LaunchConfiguration
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PrivateSubnet1
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PrivateSubnet2
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PrivateSubnet3
+      TargetGroupARNs:
+        - Fn::ImportValue:
+            Fn::Sub: ${LoadBalancerStackName}-TargetGroup
+      MinSize: 0
+      MaxSize: 1
+      DesiredCapacity: 0
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows traffic via HTTP from load balancer
+      SecurityGroupIngress:
+        - SourceSecurityGroupId:
+            Fn::ImportValue:
+              Fn::Sub: ${LoadBalancerStackName}-SecurityGroup
+          FromPort: '80'
+          IpProtocol: tcp
+          ToPort: '80'
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+
+Outputs:
+
+  AutoScalingGroup:
+    Description: The ARN of the AutoScaling Group
+    Value:
+      Ref: AutoScalingGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-AutoScalingGroup
