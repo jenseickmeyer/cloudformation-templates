@@ -44,9 +44,9 @@ Resources:
               - - "#!/bin/bash\n"
                 - "yum update -y\n"
                 # Install Docker
-                - "yum install -y docker\n"
-                - "service docker start\n"
+                - "amazon-linux-extras install -y docker\n"
                 - "systemctl enable docker.service\n"
+                - "systemctl start docker.service\n"
                 - "usermod -a -G docker ec2-user\n"
                 # Run nginx as a Docker container
                 - "docker run --rm -d -p 80:80 nginx\n"
