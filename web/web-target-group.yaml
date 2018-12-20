@@ -16,33 +16,37 @@ Parameters:
 
 Resources:
 
-  LaunchConfiguration:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      InstanceType:
-        Ref: InstanceType
-      ImageId: ami-030aae8cba933aede
-      SecurityGroups:
-        - Fn::GetAtt: WebSecurityGroup.GroupId
-      UserData:
-        Fn::Base64:
-          Fn::Join:
-            - ''
-            - - "#!/bin/bash\n"
-              - "yum update -y\n"
-              # Install Docker
-              - "yum install -y docker\n"
-              - "service docker start\n"
-              - "systemctl enable docker.service\n"
-              - "usermod -a -G docker ec2-user\n"
-              # Run nginx as a Docker container
-              - "docker run --rm -d -p 80:80 nginx\n"
+      LaunchTemplateData:
+        InstanceType:
+          Ref: InstanceType
+        ImageId: ami-034fffcc6a0063961
+        SecurityGroupIds:
+          - Fn::GetAtt: WebSecurityGroup.GroupId
+        UserData:
+          Fn::Base64:
+            Fn::Join:
+              - ''
+              - - "#!/bin/bash\n"
+                - "yum update -y\n"
+                # Install Docker
+                - "yum install -y docker\n"
+                - "service docker start\n"
+                - "systemctl enable docker.service\n"
+                - "usermod -a -G docker ec2-user\n"
+                # Run nginx as a Docker container
+                - "docker run --rm -d -p 80:80 nginx\n"
 
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      LaunchConfigurationName:
-        Ref: LaunchConfiguration
+      LaunchTemplate:
+        LaunchTemplateId:
+          Ref: LaunchTemplate
+        Version:
+          Fn::GetAtt: LaunchTemplate.LatestVersionNumber
       VPCZoneIdentifier:
         - Fn::ImportValue:
             Fn::Sub: ${NetworkStackName}-PrivateSubnet1
