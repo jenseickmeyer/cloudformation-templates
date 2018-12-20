@@ -6,6 +6,9 @@ Parameters:
   NetworkStackName:
     Type: String
     Description: The name of the network stack
+  DefaultCertificateArn:
+    Type: String
+    Description: The ARN of the default SSL certificate
 
 Resources:
 
@@ -39,11 +42,11 @@ Resources:
       SecurityGroups:
         - Fn::GetAtt: LoadBalancerSecurityGroup.GroupId
 
-  # Enforce redirect to HTTPS
-  Listener:
+  HTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
+        # By default all HTTP requests are redirected to their HTTPS counterparts
         - Type: redirect
           RedirectConfig:
             StatusCode: HTTP_301
@@ -56,6 +59,22 @@ Resources:
         Ref: LoadBalancer
       Port: 80
       Protocol: HTTP
+
+  HTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        # By default all requests not handeled by a ListenerRule return status code 502
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: 502
+      LoadBalancerArn:
+        Ref: LoadBalancer
+      Certificates:
+        - CertificateArn:
+            Ref: DefaultCertificateArn
+      Port: 443
+      Protocol: HTTPS
 
 Outputs:
 
@@ -71,6 +90,14 @@ Outputs:
     Export:
       Name:
         Fn::Sub: ${AWS::StackName}-LoadBalancer
+
+  Listener:
+    Description: The ARN of the HTTPS listener
+    Value:
+      Ref: HTTPSListener
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-Listener
 
   SecurityGroup:
     Description: The Id of the security group

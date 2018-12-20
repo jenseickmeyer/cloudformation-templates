@@ -13,6 +13,16 @@ Parameters:
     Type: String
     Description: The instance type to use for the EC2 instance
     Default: t2.micro
+  Hostname:
+    Type: String
+    Description: The hostname for which requests are handled
+  CertificateArn:
+    Type: String
+    Description: The ARN of the SSL certificate
+  ListenerRulePriority:
+    Type: Number
+    Description: The priority of the listener rule
+    Default: 10
   MinSize:
     Type: Number
     Description: The minimal size of the auto scaling group
@@ -67,14 +77,51 @@ Resources:
         - Fn::ImportValue:
             Fn::Sub: ${NetworkStackName}-PrivateSubnet3
       TargetGroupARNs:
-        - Fn::ImportValue:
-            Fn::Sub: ${LoadBalancerStackName}-TargetGroup
+        - Ref: TargetGroup
       MinSize:
         Ref: MinSize
       MaxSize:
         Ref: MaxSize
       DesiredCapacity:
         Ref: DesiredCapacity
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+
+  # Only listen to requests for certain domains
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Conditions:
+        - Field: host-header
+          Values:
+            - Ref: Hostname
+      Actions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: TargetGroup
+      ListenerArn:
+        Fn::ImportValue:
+          Fn::Sub: ${LoadBalancerStackName}-Listener
+      Priority:
+        Ref: ListenerRulePriority
+
+  ListenerCertificate:
+    Type: AWS::ElasticLoadBalancingV2::ListenerCertificate
+    Properties:
+      Certificates:
+        - CertificateArn:
+            Ref: CertificateArn
+      ListenerArn:
+        Fn::ImportValue:
+          Fn::Sub: ${LoadBalancerStackName}-Listener
 
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
