@@ -13,6 +13,18 @@ Parameters:
     Type: String
     Description: The instance type to use for the EC2 instance
     Default: t2.micro
+  MinSize:
+    Type: Number
+    Description: The minimal size of the auto scaling group
+    Default: 1
+  MaxSize:
+    Type: Number
+    Description: The maximum size of the auto scaling group
+    Default: 1
+  DesiredCapacity:
+    Type: Number
+    Description: The desired number of nodes in the auto scaling group
+    Default: 1
 
 Resources:
 
@@ -57,9 +69,12 @@ Resources:
       TargetGroupARNs:
         - Fn::ImportValue:
             Fn::Sub: ${LoadBalancerStackName}-TargetGroup
-      MinSize: 0
-      MaxSize: 1
-      DesiredCapacity: 0
+      MinSize:
+        Ref: MinSize
+      MaxSize:
+        Ref: MaxSize
+      DesiredCapacity:
+        Ref: DesiredCapacity
 
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
