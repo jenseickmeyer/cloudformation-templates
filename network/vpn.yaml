@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A template for setting up a VPN connection.
+
+Parameters:
+  
+  NetworkStackName:
+    Type: String
+    Description: The name of the network stack
+  VPNIpAddress:
+    Type: String
+    Description: The IP address of the customer VPN gateway
+
+Resources:
+
+  VPNGateway:
+    Type: AWS::EC2::VPNGateway
+    Properties:
+      Type: ipsec.1
+
+  VPNGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+      VpnGatewayId:
+        Ref: VPNGateway
+
+  CustomerGateway:
+    Type: AWS::EC2::CustomerGateway
+    Properties:
+      Type: ipsec.1
+      BgpAsn: 65000
+      IpAddress:
+        Ref: VPNIpAddress
+
+  VPNConnection:
+    Type: AWS::EC2::VPNConnection
+    Properties:
+      Type: ipsec.1
+      StaticRoutesOnly: false
+      CustomerGatewayId:
+        Ref: CustomerGateway
+      VpnGatewayId:
+        Ref: VPNGateway
+
+  VPNGatewayRoutePropagation:
+    Type: AWS::EC2::VPNGatewayRoutePropagation
+    Properties:
+      RouteTableIds:
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PrivateSubnetRouteTable
+      VpnGatewayId:
+        Ref: VPNGateway
+    DependsOn:
+      - VPNGatewayAttachment
