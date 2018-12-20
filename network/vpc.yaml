@@ -33,6 +33,13 @@ Parameters:
     Type: String
     Description: The CIDR block of the third private subnet inside the VPC.
     Default: 10.0.12.0/24
+  NATSetup:
+    Type: String
+    Description: The strategy for setting up the NAT Gateways
+    Default: single
+    AllowedValues:
+      - none
+      - single
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -55,7 +62,14 @@ Metadata:
           - PrivateSubnet2CidrBlock
           - PrivateSubnet3CidrBlock
 
+Conditions:
+  SingleNATGateway:
+    Fn::Equals:
+      - Ref: NATSetup
+      - single
+
 Resources:
+
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -68,6 +82,10 @@ Resources:
         - Key: Name
           Value:
             Ref: VPCName
+
+  #
+  # Subnets
+  #
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -150,6 +168,10 @@ Resources:
         - Key: Name
           Value: Private Subnet 3
 
+  #
+  # Internet Gateway
+  #
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
 
@@ -161,20 +183,9 @@ Resources:
       InternetGatewayId:
         Ref: InternetGateway
 
-  NATGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId:
-        Fn::GetAtt: EIP.AllocationId
-      SubnetId:
-        Ref: PublicSubnet1
-    DependsOn: VPCGatewayAttachment
-
-  EIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-    DependsOn: VPCGatewayAttachment
+  #
+  # Routing
+  #
 
   PublicSubnetRouteTable:
     Type: AWS::EC2::RouteTable
@@ -222,15 +233,6 @@ Resources:
       VpcId:
         Ref: VPC
 
-  NATGatewayRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId:
-        Ref: PrivateSubnetRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        Ref: NATGateway
-
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -254,6 +256,37 @@ Resources:
         Ref: PrivateSubnet3
       RouteTableId:
         Ref: PrivateSubnetRouteTable
+
+  #
+  # NAT Gateway
+  #
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Condition: SingleNATGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt: EIP.AllocationId
+      SubnetId:
+        Ref: PublicSubnet1
+    DependsOn: VPCGatewayAttachment
+
+  EIP:
+    Type: AWS::EC2::EIP
+    Condition: SingleNATGateway
+    Properties:
+      Domain: vpc
+    DependsOn: VPCGatewayAttachment
+
+  NATGatewayRoute:
+    Type: AWS::EC2::Route
+    Condition: SingleNATGateway
+    Properties:
+      RouteTableId:
+        Ref: PrivateSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NATGateway
 
 Outputs:
 
