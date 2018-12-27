@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Bastion host setup
+
+Parameters:
+
+  NetworkStackName:
+    Type: String
+    Description: The name of the network stack
+  InstanceType:
+    Type: String
+    Description: The instance type to use for the EC2 instance
+    Default: t3.nano
+  SourceCidrIp:
+    Type: String
+    Description: The IP CIDR block from which SSH access is allowed
+    Default: 0.0.0.0/0
+  KeyName:
+    Type: String
+    Description: The name of the SSH key pair
+
+Resources:
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId:
+          Ref: LaunchTemplate
+        Version:
+          Fn::GetAtt: LaunchTemplate.LatestVersionNumber
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PublicSubnet1
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PublicSubnet2
+        - Fn::ImportValue:
+            Fn::Sub: ${NetworkStackName}-PublicSubnet3
+      MinSize: 0
+      MaxSize: 1
+      DesiredCapacity: 1
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName:
+        Fn::Sub: ${AWS::StackName}-bastion-host
+      LaunchTemplateData:
+        InstanceType:
+          Ref: InstanceType
+        ImageId: ami-034fffcc6a0063961
+        SecurityGroupIds:
+          - Fn::GetAtt: SSHSecurityGroup.GroupId
+        KeyName:
+          Ref: KeyName
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: Bastion Host
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: Bastion Host
+        UserData:
+          Fn::Base64:
+            Fn::Join:
+              - ''
+              - - "#!/bin/bash\n"
+                - "yum update -y\n"
+
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows connections via SSH
+      SecurityGroupIngress:
+        - CidrIp:
+            Ref: SourceCidrIp
+          FromPort: '22'
+          IpProtocol: tcp
+          ToPort: '22'
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
