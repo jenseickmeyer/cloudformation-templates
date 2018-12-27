@@ -10,10 +10,6 @@ Parameters:
     Type: String
     Description: The instance type to use for the EC2 instance
     Default: t3.nano
-  SourceCidrIp:
-    Type: String
-    Description: The IP CIDR block from which SSH access is allowed
-    Default: 0.0.0.0/0
   KeyName:
     Type: String
     Description: The name of the SSH key pair
@@ -42,14 +38,13 @@ Resources:
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName:
-        Fn::Sub: ${AWS::StackName}-bastion-host
       LaunchTemplateData:
         InstanceType:
           Ref: InstanceType
         ImageId: ami-034fffcc6a0063961
         SecurityGroupIds:
-          - Fn::GetAtt: SSHSecurityGroup.GroupId
+          - Fn::ImportValue:
+              Fn::Sub: ${NetworkStackName}-BastionHostSecurityGroup
         KeyName:
           Ref: KeyName
         TagSpecifications:
@@ -67,17 +62,3 @@ Resources:
               - ''
               - - "#!/bin/bash\n"
                 - "yum update -y\n"
-
-  SSHSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allows connections via SSH
-      SecurityGroupIngress:
-        - CidrIp:
-            Ref: SourceCidrIp
-          FromPort: '22'
-          IpProtocol: tcp
-          ToPort: '22'
-      VpcId:
-        Fn::ImportValue:
-          Fn::Sub: ${NetworkStackName}-VpcId

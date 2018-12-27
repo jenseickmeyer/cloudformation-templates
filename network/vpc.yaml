@@ -40,6 +40,10 @@ Parameters:
     AllowedValues:
       - none
       - single
+  SourceCidrIp:
+    Type: String
+    Description: The IP CIDR block from which SSH access is allowed
+    Default: 0.0.0.0/0
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -288,6 +292,35 @@ Resources:
       NatGatewayId:
         Ref: NATGateway
 
+  #
+  # Security Groups
+  #
+
+  BastionHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows connections from the Internet via SSH
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      VpcId:
+        Ref: VPC
+
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows connections from the Internet via SSH
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId:
+            Ref: BastionHostSecurityGroup
+      VpcId:
+        Ref: VPC
+
 Outputs:
 
   VpcId:
@@ -361,3 +394,19 @@ Outputs:
     Export:
       Name:
         Fn::Sub: ${AWS::StackName}-PrivateSubnetRouteTable
+
+  BastionHostSecurityGroup:
+    Description: The Security Group for accessing the bastion host via SSH
+    Value:
+      Ref: BastionHostSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-BastionHostSecurityGroup
+
+  SSHSecurityGroup:
+    Description: The Security Group for providing access from bastion host to instances via SSH
+    Value:
+      Ref: SSHSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-SSHSecurityGroup
