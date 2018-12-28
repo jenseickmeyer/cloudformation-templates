@@ -54,6 +54,15 @@ Resources:
               Fn::Sub: ${NetworkStackName}-SSHSecurityGroup
         KeyName:
           Ref: KeyName
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: Web Server
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: Web Server
         UserData:
           Fn::Base64:
             Fn::Join:
