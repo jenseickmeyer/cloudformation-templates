@@ -61,4 +61,4 @@ Resources:
             Fn::Join:
               - ''
               - - "#!/bin/bash\n"
-                - "yum update -y\n"
+                - "yum -y --security update\n"

@@ -52,7 +52,7 @@ Resources:
             Fn::Join:
               - ''
               - - "#!/bin/bash\n"
-                - "yum update -y\n"
+                - "yum -y --security update\n"
                 # Install Docker
                 - "amazon-linux-extras install -y docker\n"
                 - "systemctl enable docker.service\n"
