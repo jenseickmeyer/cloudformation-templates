@@ -35,6 +35,9 @@ Parameters:
     Type: Number
     Description: The desired number of nodes in the auto scaling group
     Default: 1
+  KeyName:
+    Type: String
+    Description: The name of the SSH key pair
 
 Resources:
 
@@ -47,6 +50,10 @@ Resources:
         ImageId: ami-034fffcc6a0063961
         SecurityGroupIds:
           - Fn::GetAtt: WebSecurityGroup.GroupId
+          - Fn::ImportValue:
+              Fn::Sub: ${NetworkStackName}-SSHSecurityGroup
+        KeyName:
+          Ref: KeyName
         UserData:
           Fn::Base64:
             Fn::Join:
