@@ -26,15 +26,15 @@ Parameters:
   MinSize:
     Type: Number
     Description: The minimal size of the auto scaling group
-    Default: 1
+    Default: 3
   MaxSize:
     Type: Number
     Description: The maximum size of the auto scaling group
-    Default: 1
+    Default: 6
   DesiredCapacity:
     Type: Number
     Description: The desired number of nodes in the auto scaling group
-    Default: 1
+    Default: 3
   KeyName:
     Type: String
     Description: The name of the SSH key pair
