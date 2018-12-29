@@ -78,11 +78,6 @@ Resources:
 
 Outputs:
 
-  LoadBalancerDnsName:
-    Description: The DNS name of the load balancer
-    Value:
-      Fn::GetAtt: LoadBalancer.DNSName
-
   LoadBalancer:
     Description: The ARN of the load balancer
     Value:
@@ -90,6 +85,22 @@ Outputs:
     Export:
       Name:
         Fn::Sub: ${AWS::StackName}-LoadBalancer
+
+  LoadBalancerDNSName:
+    Description: The DNS name of the load balancer
+    Value:
+      Fn::GetAtt: LoadBalancer.DNSName
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-LoadBalancerDNSName
+
+  LoadBalancerCanonicalHostedZoneID:
+    Description: The ARN of the load balancer
+    Value:
+      Fn::GetAtt: LoadBalancer.CanonicalHostedZoneID
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-LoadBalancerCanonicalHostedZoneID
 
   Listener:
     Description: The ARN of the HTTPS listener

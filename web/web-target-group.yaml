@@ -38,6 +38,9 @@ Parameters:
   KeyName:
     Type: String
     Description: The name of the SSH key pair
+  HostedZone:
+    Type: AWS::Route53::HostedZone::Id
+    Description: The Hosted Zone for which the DNS recrod is created
 
 Resources:
 
@@ -153,6 +156,23 @@ Resources:
       VpcId:
         Fn::ImportValue:
           Fn::Sub: ${NetworkStackName}-VpcId
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Ref: HostedZone
+      Name:
+        Ref: Hostname
+      Type: A
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue:
+            Fn::Sub: ${LoadBalancerStackName}-LoadBalancerDNSName
+        HostedZoneId:
+          Fn::ImportValue:
+            Fn::Sub: ${LoadBalancerStackName}-LoadBalancerCanonicalHostedZoneID
+        EvaluateTargetHealth: true
 
 Outputs:
 
