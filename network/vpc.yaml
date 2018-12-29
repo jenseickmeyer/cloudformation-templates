@@ -299,7 +299,7 @@ Resources:
   BastionHostSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allows connections from the Internet via SSH
+      GroupDescription: Allows SSH connections from the Internet
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -312,7 +312,7 @@ Resources:
   SSHSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allows connections from the Internet via SSH
+      GroupDescription: Allows SSH connections from the bastion host
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
