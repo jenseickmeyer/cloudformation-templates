@@ -99,7 +99,8 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: Public Subnet 1
+          Value:
+            Fn::Sub: ${AWS::StackName}-public-subnet-1
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -113,7 +114,8 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: Public Subnet 2
+          Value:
+            Fn::Sub: ${AWS::StackName}-public-subnet-2
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
@@ -127,7 +129,8 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: Public Subnet 3
+          Value:
+            Fn::Sub: ${AWS::StackName}-public-subnet-3
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -140,7 +143,8 @@ Resources:
         Fn::Sub: ${AWS::Region}a
       Tags:
         - Key: Name
-          Value: Private Subnet 1
+          Value:
+            Fn::Sub: ${AWS::StackName}-private-subnet-1
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -153,7 +157,8 @@ Resources:
         Fn::Sub: ${AWS::Region}b
       Tags:
         - Key: Name
-          Value: Private Subnet 2
+          Value:
+            Fn::Sub: ${AWS::StackName}-private-subnet-2
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
@@ -166,7 +171,8 @@ Resources:
         Fn::Sub: ${AWS::Region}c
       Tags:
         - Key: Name
-          Value: Private Subnet 3
+          Value:
+            Fn::Sub: ${AWS::StackName}-private-subnet-3
 
   #
   # Internet Gateway
@@ -174,6 +180,11 @@ Resources:
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: ${AWS::StackName}-internet-gateway
 
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -192,6 +203,10 @@ Resources:
     Properties:
       VpcId:
         Ref: VPC
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: ${AWS::StackName}-public-route-table
 
   InternetGatewayRoute:
     Type: AWS::EC2::Route
@@ -232,6 +247,10 @@ Resources:
     Properties:
       VpcId:
         Ref: VPC
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: ${AWS::StackName}-public-route-table
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
