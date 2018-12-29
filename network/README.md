@@ -7,5 +7,5 @@ The template [vpc.yaml](vpc.yaml) defines a _Virtual Private Cloud_ (VPC) spread
 To create a VPC based on this template the following AWS CLI command can be used:
 
 ```
-aws cloudformation create-stack --stack-name my-vpc --template-body file://vpc.yaml --parameters ParameterKey=VPCName,ParameterValue=my-vpc
+aws cloudformation create-stack --stack-name my-vpc --template-body file://vpc.yaml
 ```

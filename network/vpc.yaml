@@ -2,9 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: A template for creating a VPC across three AZs with a public and private subnet in each AZ. Routing of traffic from the private subnets to the public internet is performed through a NAT Gateway.
 
 Parameters:
-  VPCName:
-    Type: String
-    Description: The name of the VPC
   VPCCidrBlock:
     Type: String
     Description: The CIDR block of the VPC
@@ -51,7 +48,6 @@ Metadata:
       - Label:
           default: VPC
         Parameters:
-          - VPCName
           - VPCCidrBlock
       - Label:
           default: Public Subnets
@@ -85,7 +81,7 @@ Resources:
       Tags:
         - Key: Name
           Value:
-            Ref: VPCName
+            Fn::Sub: ${AWS::StackName}
 
   #
   # Subnets
