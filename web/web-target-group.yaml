@@ -12,7 +12,7 @@ Parameters:
   InstanceType:
     Type: String
     Description: The instance type to use for the EC2 instance
-    Default: t2.micro
+    Default: t3.micro
   Hostname:
     Type: String
     Description: The hostname for which requests are handled
@@ -36,7 +36,7 @@ Parameters:
     Description: The desired number of nodes in the auto scaling group
     Default: 3
   KeyName:
-    Type: String
+    Type: AWS::EC2::KeyPair::KeyName
     Description: The name of the SSH key pair
   HostedZone:
     Type: AWS::Route53::HostedZone::Id
