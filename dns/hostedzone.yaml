@@ -4,14 +4,6 @@ Parameters:
 
   Domain:
     Type: String
-  Application:
-    Type: String
-
-Outputs:
-
-  HostedZoneId:
-    Description: The ID of the Hosted Zone in Route 53
-    Value: !Ref HostedZone
 
 Resources:
 
@@ -20,6 +12,13 @@ Resources:
     Properties:
       Name:
         Ref: Domain
-      HostedZoneTags:
-        - Key: "Application"
-          Value: !Ref Application
+
+Outputs:
+
+  HostedZoneId:
+    Description: The ID of the Hosted Zone in Route 53
+    Value:
+      Ref: HostedZone
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-HostedZoneId
