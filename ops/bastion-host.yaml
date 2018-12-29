@@ -11,7 +11,7 @@ Parameters:
     Description: The instance type to use for the EC2 instance
     Default: t3.nano
   KeyName:
-    Type: String
+    Type: AWS::EC2::KeyPair::KeyName
     Description: The name of the SSH key pair
 
 Resources:
