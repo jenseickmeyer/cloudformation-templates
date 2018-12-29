@@ -56,6 +56,11 @@ Resources:
             Tags:
               - Key: Name
                 Value: Bastion Host
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
         UserData:
           Fn::Base64:
             Fn::Join:
