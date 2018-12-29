@@ -308,6 +308,9 @@ Resources:
             Ref: SourceCidrIp
       VpcId:
         Ref: VPC
+      Tags:
+        - Key: Name
+          Value: Bastion Host SG
 
   SSHSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -321,6 +324,9 @@ Resources:
             Ref: BastionHostSecurityGroup
       VpcId:
         Ref: VPC
+      Tags:
+        - Key: Name
+          Value: Internal SSH SG
 
   #
   # Network ACLs
