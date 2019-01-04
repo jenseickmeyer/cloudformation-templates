@@ -1,0 +1,190 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+
+  RepositoryOwner:
+    Type: String
+    Description: The owner of the GitHub repository.
+  RepositoryName:
+    Type: String
+    Description: The name of the GitHub repository.
+  RepositoryBranch:
+    Type: String
+    Description: The name of the branch.
+    Default: master
+  SiteBucket:
+    Type: String
+    Description: The name of the S3 bucket to which the contents of the site are published
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Repository
+        Parameters:
+          - RepositoryOwner
+          - RepositoryName
+          - RepositoryBranch
+      - Label:
+          default: Website
+        Parameters:
+          - SiteBucket
+    ParameterLabels:
+      RepositoryOwner:
+        default: Owner
+      RepositoryName:
+        default: Name
+      RepositoryBranch:
+        default: Branch
+      SiteBucket:
+        default: Bucket
+
+Resources:
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name:
+        Fn::Sub: ${RepositoryName}-pipeline
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Checkout
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
+              Configuration:
+                Owner:
+                  Ref: RepositoryOwner
+                Repo:
+                  Ref: RepositoryName
+                Branch:
+                  Ref: RepositoryBranch
+                OAuthToken: "{{resolve:ssm:/github/personal_access_token:1}}"
+              OutputArtifacts:
+                - Name: SourceOutput
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: CodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+      RoleArn:
+        Fn::GetAtt: CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location:
+          Ref: ArtifactsBucket
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${RepositoryName}-build
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/ruby:2.5.3
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value:
+              Ref: SiteBucket
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yaml
+
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub codepipeline.${RepositoryName}.${AWS::Region}
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteBuildArtifactsAfterOneWeek
+            ExpirationInDays: 7
+            Status: Enabled
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelineTrustPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - Fn::GetAtt: CodeBuildProject.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildTrustPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build:*
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${SiteBucket}
+                  - Fn::Sub: arn:aws:s3:::${SiteBucket}/*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
