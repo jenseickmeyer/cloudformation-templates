@@ -93,3 +93,18 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2
         DNSName:
           Fn::GetAtt: WebsiteCDN.DomainName
+
+Outputs:
+
+  WebsiteContentBucket:
+    Description: The S3 bucket from which the contents are delivered
+    Value:
+      Ref: WebsiteContentBucket
+  WebsiteLoggingBucket:
+    Description: The S3 bucket to which the access logs are saved
+    Value:
+      Ref: WebsiteLoggingBucket
+  CloudFrontDistributionId:
+    Description: The ID of the CloudFront distribution
+    Value:
+      Ref: WebsiteCDN
