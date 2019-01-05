@@ -8,8 +8,6 @@ Parameters:
     Type: String
   CertificateArn:
     Type: String
-  Application:
-    Type: String
 
 Resources:
 
@@ -17,17 +15,11 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "site-${Domain}-content"
-      Tags:
-        - Key: "Application"
-          Value: !Ref Application
 
   WebsiteLoggingBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "site-${Domain}-logging"
-      Tags:
-        - Key: "Application"
-          Value: !Ref Application
 
   WebsiteContentBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -70,9 +62,6 @@ Resources:
         ViewerCertificate:
           AcmCertificateArn: !Ref CertificateArn
           SslSupportMethod: sni-only
-      Tags:
-        - Key: "Application"
-          Value: !Ref Application
 
   WebsiteCloudFrontOAI:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
