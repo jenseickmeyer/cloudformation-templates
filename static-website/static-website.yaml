@@ -13,11 +13,13 @@ Resources:
 
   WebsiteContentBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "site-${Domain}-content"
 
   WebsiteLoggingBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "site-${Domain}-logging"
 
