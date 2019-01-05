@@ -4,7 +4,7 @@ Parameters:
 
   HostedZoneId:
     Type: AWS::Route53::HostedZone::Id
-  Domain:
+  DomainName:
     Type: String
   CertificateArn:
     Type: String
@@ -16,14 +16,14 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       BucketName:
-        Fn::Sub: "site-${Domain}-content"
+        Fn::Sub: "site-${DomainName}-contents"
 
   WebsiteLoggingBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
       BucketName:
-        Fn::Sub: "site-${Domain}-logging"
+        Fn::Sub: "site-${DomainName}-logs"
 
   WebsiteContentBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -60,7 +60,7 @@ Resources:
             Fn::Sub: "${WebsiteLoggingBucket}.s3.amazonaws.com"
           Prefix: logs
         Aliases:
-          - Ref: Domain
+          - Ref: DomainName
         HttpVersion: http2
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
@@ -79,7 +79,7 @@ Resources:
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment:
-          Ref: Domain
+          Ref: DomainName
 
   CDNRecordSet:
     Type: AWS::Route53::RecordSet
@@ -87,7 +87,7 @@ Resources:
       HostedZoneId:
         Ref: HostedZoneId
       Name:
-        Fn::Sub: "${Domain}."
+        Fn::Sub: "${DomainName}."
       Type: A
       AliasTarget:
         HostedZoneId: Z2FDTNDATAQYW2
