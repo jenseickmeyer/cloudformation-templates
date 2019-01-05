@@ -15,44 +15,52 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
-      BucketName: !Sub "site-${Domain}-content"
+      BucketName:
+        Fn::Sub: "site-${Domain}-content"
 
   WebsiteLoggingBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
-      BucketName: !Sub "site-${Domain}-logging"
+      BucketName:
+        Fn::Sub: "site-${Domain}-logging"
 
   WebsiteContentBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref WebsiteContentBucket
+      Bucket:
+        Ref: WebsiteContentBucket
       PolicyDocument:
         Statement:
           - Action:
               - "s3:GetObject"
             Effect: "Allow"
-            Resource: !Sub "arn:aws:s3:::${WebsiteContentBucket}/*"
+            Resource:
+              Fn::Sub: arn:aws:s3:::${WebsiteContentBucket}/*
             Principal:
-              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${WebsiteCloudFrontOAI}"
+              AWS:
+                Fn::Sub: "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${WebsiteCloudFrontOAI}"
 
   WebsiteCDN:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Origins:
-          - DomainName: !Sub "${WebsiteContentBucket}.s3.amazonaws.com"
+          - DomainName:
+              Fn::Sub: "${WebsiteContentBucket}.s3.amazonaws.com"
             Id: S3Origin
             S3OriginConfig:
-              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${WebsiteCloudFrontOAI}"
+              OriginAccessIdentity:
+                Fn::Sub: "origin-access-identity/cloudfront/${WebsiteCloudFrontOAI}"
         DefaultRootObject: index.html
         Enabled: true
         Logging:
           IncludeCookies: false
-          Bucket: !Sub "${WebsiteLoggingBucket}.s3.amazonaws.com"
+          Bucket:
+            Fn::Sub: "${WebsiteLoggingBucket}.s3.amazonaws.com"
           Prefix: logs
         Aliases:
-          - !Ref Domain
+          - Ref: Domain
         HttpVersion: http2
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
@@ -62,21 +70,26 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
         PriceClass: PriceClass_100
         ViewerCertificate:
-          AcmCertificateArn: !Ref CertificateArn
+          AcmCertificateArn:
+            Ref: CertificateArn
           SslSupportMethod: sni-only
 
   WebsiteCloudFrontOAI:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
-        Comment: !Ref Domain
+        Comment:
+          Ref: Domain
 
   CDNRecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
-      HostedZoneId: !Ref HostedZoneId
-      Name: !Sub "${Domain}."
+      HostedZoneId:
+        Ref: HostedZoneId
+      Name:
+        Fn::Sub: "${Domain}."
       Type: A
       AliasTarget:
         HostedZoneId: Z2FDTNDATAQYW2
-        DNSName: !GetAtt WebsiteCDN.DomainName
+        DNSName:
+          Fn::GetAtt: WebsiteCDN.DomainName
