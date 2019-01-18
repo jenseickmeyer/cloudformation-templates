@@ -116,7 +116,21 @@ Resources:
         Image: aws/codebuild/ruby:2.5.3
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec.yaml
+        BuildSpec:
+          Fn::Join:
+            - ''
+            - - "version: 0.2\n"
+              - "phases:\n"
+              - "  install:\n"
+              - "    commands:\n"
+              - "      - bundle install\n"
+              - "  build:\n"
+              - "    commands:\n"
+              - "      - JEKYLL_ENV=production bundle exec jekyll build\n"
+              - "artifacts:\n"
+              - "  base-directory: '_site'\n"
+              - "  files:\n"
+              - "    - '**/*'\n"
 
   ArtifactsBucket:
     Type: AWS::S3::Bucket
