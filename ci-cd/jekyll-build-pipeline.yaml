@@ -80,6 +80,20 @@ Resources:
                 - Name: SourceOutput
               OutputArtifacts:
                 - Name: BuildOutput
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              Configuration:
+                BucketName:
+                  Ref: SiteBucket
+                Extract: true
+              InputArtifacts:
+                - Name: BuildOutput
       RoleArn:
         Fn::GetAtt: CodePipelineServiceRole.Arn
       ArtifactStore:
@@ -100,10 +114,6 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/ruby:2.5.3
-        EnvironmentVariables:
-          - Name: S3_BUCKET
-            Value:
-              Ref: SiteBucket
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yaml
@@ -149,6 +159,12 @@ Resources:
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}
                   - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${SiteBucket}
+                  - Fn::Sub: arn:aws:s3:::${SiteBucket}/*
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -175,12 +191,6 @@ Resources:
                 Resource:
                   - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build
                   - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build:*
-              - Effect: Allow
-                Action:
-                  - s3:*
-                Resource:
-                  - Fn::Sub: arn:aws:s3:::${SiteBucket}
-                  - Fn::Sub: arn:aws:s3:::${SiteBucket}/*
               - Effect: Allow
                 Action:
                   - s3:GetObject
