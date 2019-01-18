@@ -109,6 +109,9 @@ Outputs:
     Description: The S3 bucket from which the contents are delivered
     Value:
       Ref: WebsiteContentBucket
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-WebsiteContentBucket
   WebsiteLoggingBucket:
     Description: The S3 bucket to which the access logs are saved
     Value:
@@ -117,3 +120,6 @@ Outputs:
     Description: The ID of the CloudFront distribution
     Value:
       Ref: WebsiteCDN
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-CloudFrontDistributionId

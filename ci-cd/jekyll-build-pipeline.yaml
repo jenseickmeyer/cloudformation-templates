@@ -12,9 +12,9 @@ Parameters:
     Type: String
     Description: The name of the branch.
     Default: master
-  SiteBucket:
+  StaticWebsiteStackName:
     Type: String
-    Description: The name of the S3 bucket to which the contents of the site are published
+    Description: The name of the CloudFormation stack of the static website
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -28,7 +28,7 @@ Metadata:
       - Label:
           default: Website
         Parameters:
-          - SiteBucket
+          - StaticWebsiteStackName
     ParameterLabels:
       RepositoryOwner:
         default: Owner
@@ -36,8 +36,8 @@ Metadata:
         default: Name
       RepositoryBranch:
         default: Branch
-      SiteBucket:
-        default: Bucket
+      StaticWebsiteStackName:
+        default: Stack Name
 
 Resources:
 
@@ -90,7 +90,8 @@ Resources:
                 Version: 1
               Configuration:
                 BucketName:
-                  Ref: SiteBucket
+                  Fn::ImportValue:
+                    Fn::Sub: ${StaticWebsiteStackName}-WebsiteContentBucket
                 Extract: true
               InputArtifacts:
                 - Name: BuildOutput
@@ -177,8 +178,16 @@ Resources:
                 Action:
                   - s3:PutObject
                 Resource:
-                  - Fn::Sub: arn:aws:s3:::${SiteBucket}
-                  - Fn::Sub: arn:aws:s3:::${SiteBucket}/*
+                  - Fn::Sub:
+                      - arn:aws:s3:::${SiteBucket}
+                      - SiteBucket:
+                          Fn::ImportValue:
+                            Fn::Sub: ${StaticWebsiteStackName}-WebsiteContentBucket
+                  - Fn::Sub:
+                      - arn:aws:s3:::${SiteBucket}/*
+                      - SiteBucket:
+                          Fn::ImportValue:
+                            Fn::Sub: ${StaticWebsiteStackName}-WebsiteContentBucket
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
