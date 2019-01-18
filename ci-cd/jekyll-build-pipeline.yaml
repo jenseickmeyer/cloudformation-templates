@@ -95,6 +95,17 @@ Resources:
                 Extract: true
               InputArtifacts:
                 - Name: BuildOutput
+              RunOrder: 1
+            - Name: Invalidate
+              ActionTypeId:
+                Category: Invoke
+                Owner: AWS
+                Provider: Lambda
+                Version: 1
+              Configuration:
+                FunctionName:
+                  Ref: CloudFrontDistributionInvalidationFunction
+              RunOrder: 2
       RoleArn:
         Fn::GetAtt: CodePipelineServiceRole.Arn
       ArtifactStore:
@@ -132,6 +143,48 @@ Resources:
               - "  base-directory: '_site'\n"
               - "  files:\n"
               - "    - '**/*'\n"
+
+  CloudFrontDistributionInvalidationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs8.10
+      Handler: index.handler
+      Timeout: 5
+      Role:
+        Fn::GetAtt: CloudFrontDistributionInvalidationFunctionRole.Arn
+      Code:
+        ZipFile:
+          Fn::Join:
+            - "\n"
+            - - "const aws = require('aws-sdk');"
+              - ""
+              - "const DistributionId = process.env.DISTRIBUTION_ID;"
+              - ""
+              - "exports.handler = async (event) => {"
+              - "  const codepipeline = new aws.CodePipeline();"
+              - "  const cloudfront = new aws.CloudFront();"
+              - "  "
+              - "  const jobId = event['CodePipeline.job'].id;"
+              - "  "
+              - "  const params = {"
+              - "    DistributionId: DistributionId,"
+              - "    InvalidationBatch: {"
+              - "      Paths: {"
+              - "        Quantity: 1,"
+              - "        Items: [ '/*' ]"
+              - "      },"
+              - "      CallerReference: new Date().toISOString()"
+              - "    }"
+              - "  };"
+              - "  await cloudfront.createInvalidation(params).promise();"
+              - "  "
+              - "  await codepipeline.putJobSuccessResult({ jobId: jobId }).promise();"
+              - "};"
+      Environment:
+        Variables:
+          DISTRIBUTION_ID:
+            Fn::ImportValue:
+              Fn::Sub: ${StaticWebsiteStackName}-CloudFrontDistributionId
 
   ArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -188,6 +241,16 @@ Resources:
                       - SiteBucket:
                           Fn::ImportValue:
                             Fn::Sub: ${StaticWebsiteStackName}-WebsiteContentBucket
+              - Effect: Allow
+                Action:
+                  - lambda:ListFunctions
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - Fn::GetAtt: CloudFrontDistributionInvalidationFunction.Arn
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -221,3 +284,33 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
+
+  CloudFrontDistributionInvalidationFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CloudFrontDistributionInvalidationPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - codepipeline:PutJobSuccessResult
+                Resource:
+                  - "*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
