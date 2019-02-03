@@ -18,6 +18,7 @@ Parameters:
     Type: String
     Description: The build environment used by CodeBuild.
     AllowedValues:
+      - java8
       - nodejs8.11
       - python2.7
       - python3.6
@@ -25,6 +26,8 @@ Parameters:
 
 Mappings:
   BuildEnvironmentsMap:
+    java8:
+      image: aws/codebuild/java:openjdk-8
     nodejs8.11:
       image: aws/codebuild/nodejs:8.11.0
     python2.7:
