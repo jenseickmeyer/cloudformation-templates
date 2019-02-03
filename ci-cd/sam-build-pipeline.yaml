@@ -125,6 +125,10 @@ Resources:
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value: !Ref ArtifactsBucket
+      Cache:
+        Type: S3
+        Location:
+          Fn::Sub: ${ArtifactsBucket}/cache
 
   ArtifactsBucket:
     Type: AWS::S3::Bucket
