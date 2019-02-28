@@ -85,7 +85,6 @@ Resources:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: BuildOutput::sam-template-output.yaml
-                TemplateConfiguration: BuildOutput::config-dev.json
                 ChangeSetName: !Sub ${RepositoryName}-changeset
                 StackName: !Sub ${RepositoryName}-dev
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
