@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: The ID of the hosted zone to which the resource record should be added
+  Domain:
+    Type: String
+    Description: The Domain name for the API
+  Certificate:
+    Type: String
+    Description: The ARN Certificate
+
+Resources:
+
+  DomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      RegionalCertificateArn:
+        Ref: Certificate
+      DomainName:
+        Ref: Domain
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Ref: HostedZoneId
+      Name:
+        Ref: Domain
+      Type: A
+      AliasTarget:
+        HostedZoneId:
+          Fn::GetAtt: DomainName.RegionalHostedZoneId
+        DNSName:
+          Fn::GetAtt: DomainName.RegionalDomainName
+
+Outputs:
+
+  DomainName:
+    Description: The Domain name
+    Value:
+      Ref: Domain
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-DomainName
