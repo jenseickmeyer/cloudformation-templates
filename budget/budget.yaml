@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+
+  Limit:
+    Type: Number
+    Description: The amount of budget (in USD) per month
+    MinValue: 0
+  Threshold:
+    Type: Number
+    Description: The threshold at which a notification is sent
+    MinValue: 0
+    MaxValue: 100
+  SubscriberAddress:
+    Type: String
+    Description: The email address to which notifications will be sent
+
+Resources:
+
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetLimit:
+          Amount:
+            Ref: Limit
+          Unit: USD
+        BudgetType: COST
+        TimeUnit: MONTHLY
+      NotificationsWithSubscribers:
+        - Notification:
+            Threshold:
+              Ref: Threshold
+            ThresholdType: PERCENTAGE
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address:
+                Ref: SubscriberAddress
