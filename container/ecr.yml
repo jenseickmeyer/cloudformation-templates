@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A template for creating a ECR repository.
+
+Parameters:
+
+  RepositoryName:
+    Type: String
+    Description: The name of the repository
+
+Resources:
+
+  Repository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName:
+        Ref: RepositoryName
