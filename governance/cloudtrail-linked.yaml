@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The CloudTrail setup for an account linked to a central account for collecting all CloudTrail logs.
+
+Parameters:
+
+  TrailBucket:
+    Type: String
+    Description: The name of the S3 bucket in the central CloudTrail account for storing all logs for linked accounts.
+
+Resources:
+
+  Trail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: linked-trail
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      IsMultiRegionTrail: true
+      EnableLogFileValidation: true
+      S3BucketName:
+        Ref: TrailBucket

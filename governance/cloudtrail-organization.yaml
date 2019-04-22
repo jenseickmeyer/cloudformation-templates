@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The CloudTrail setup for the central account which collects CloudTrail logs for every linked account.
+
+Parameters:
+
+  BucketName:
+    Type: String
+    Description: The name of the S3 bucket in which CloudTrail logs are saved
+  OrganizationId:
+    Type: String
+    Description: The ID of the AWS Organization for which this CloudTrail should be used
+
+Resources:
+
+  TrailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Ref: BucketName
+    DeletionPolicy: Retain
+
+  TrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: TrailBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:GetBucketAcl"
+            Resource:
+              Fn::Sub: "arn:aws:s3:::${TrailBucket}"
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource:
+              - Fn::Sub: "arn:aws:s3:::${TrailBucket}/AWSLogs/${AWS::AccountId}/*"
+              - Fn::Sub: "arn:aws:s3:::${TrailBucket}/AWSLogs/${OrganizationId}/*"
+            Condition:
+              StringEquals:
+                "s3:x-amz-acl": "bucket-owner-full-control"
+
+  Trail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: organization-trail
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      IsMultiRegionTrail: true
+      EnableLogFileValidation: true
+      S3BucketName:
+        Ref: TrailBucket
+    DependsOn:
+      - TrailBucketPolicy
+
+Outputs:
+
+  VpcId:
+    Description: Trail Bucket ARN
+    Value:
+      Ref: TrailBucket
