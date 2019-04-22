@@ -12,7 +12,8 @@ The following AWS CLI command can be used to launch the infrastructure:
 ```
 aws cloudformation create-stack --stack-name my-static-website \
                                 --template-body file://static-website.yaml  \
-                                --parameters ParameterKey=HostedZoneId,ParameterValue=Z2CV1LKAQAGQWM ParameterKey=DomainName,ParameterValue=www.example.com \
+                                --parameters ParameterKey=HostedZoneId,ParameterValue=Z2CV1LKAQAGQWM \
+                                             ParameterKey=DomainName,ParameterValue=www.example.com \
                                 --notification-arns arn:aws:sns:us-east-1:012345678901:serverlessrepo-acm-dns-record-manager-CloudFormationEventsTopic-TD773GQDCOWL \
                                 --region us-east-1
 ```

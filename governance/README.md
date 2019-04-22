@@ -23,7 +23,8 @@ For an AWS Organization CloudTrail can be activated automatically for all linked
 ORGANIZATION_ID=$(aws organizations describe-organization --query Organization.Id --output text)
 aws cloudformation create-stack --stack-name organization-trail \
                                 --template-body file://cloudtrail-organization.yaml \
-                                --parameters ParameterKey=OrganizationId,ParameterValue=${ORGANIZATION_ID} ParameterKey=BucketName,ParameterValue=com.example.cloudtrail
+                                --parameters ParameterKey=OrganizationId,ParameterValue=${ORGANIZATION_ID} \
+                                             ParameterKey=BucketName,ParameterValue=com.example.cloudtrail
 aws cloudtrail update-trail --name organization-trail \
                             --is-organization-trail
 ```

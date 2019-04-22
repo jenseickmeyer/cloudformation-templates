@@ -21,7 +21,8 @@ Additionally, two _Security Groups_ are configured:
 To create a VPC based on this template the following AWS CLI command can be used:
 
 ```
-aws cloudformation create-stack --stack-name my-vpc --template-body file://vpc.yaml
+aws cloudformation create-stack --stack-name my-vpc \
+                                --template-body file://vpc.yaml
 ```
 
 To create a new VPC which allows SSH access only to your machine use the following commands:
@@ -29,7 +30,9 @@ To create a new VPC which allows SSH access only to your machine use the followi
 ```
 my_ip=$(curl -s ipecho.net/plain)
 
-aws cloudformation create-stack --stack-name my-vpc --template-body file://vpc.yaml --parameters ParameterKey=SourceCidrIp,ParameterValue=$my_ip/32
+aws cloudformation create-stack --stack-name my-vpc \
+                                --template-body file://vpc.yaml \
+                                --parameters ParameterKey=SourceCidrIp,ParameterValue=$my_ip/32
 ```
 
 ### Parameters
