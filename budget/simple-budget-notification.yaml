@@ -6,11 +6,13 @@ Parameters:
     Type: Number
     Description: The amount of budget (in USD) per month
     MinValue: 0
+    Default: 100
   Threshold:
     Type: Number
     Description: The threshold at which a notification is sent
     MinValue: 0
     MaxValue: 100
+    Default: 80
   SubscriberAddress:
     Type: String
     Description: The email address to which notifications will be sent
