@@ -17,6 +17,8 @@ Resources:
     Properties:
       BucketName:
         Ref: BucketName
+      VersioningConfiguration:
+        Status: Enabled
     DeletionPolicy: Retain
 
   TrailBucketPolicy:
