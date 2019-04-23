@@ -19,6 +19,13 @@ Resources:
         Ref: BucketName
       VersioningConfiguration:
         Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: Archive
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: GLACIER
     DeletionPolicy: Retain
 
   TrailBucketPolicy:
