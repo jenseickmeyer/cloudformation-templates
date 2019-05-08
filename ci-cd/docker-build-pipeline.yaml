@@ -1,0 +1,293 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+
+  RepositoryOwner:
+    Type: String
+    Description: The owner of the GitHub repository.
+  RepositoryName:
+    Type: String
+    Description: The name of the GitHub repository.
+  RepositoryBranch:
+    Type: String
+    Description: The name of the branch.
+    Default: master
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Repository
+        Parameters:
+          - RepositoryOwner
+          - RepositoryName
+          - RepositoryBranch
+    ParameterLabels:
+      RepositoryOwner:
+        default: Owner
+      RepositoryName:
+        default: Name
+      RepositoryBranch:
+        default: Branch
+
+Resources:
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name:
+        Fn::Sub: ${RepositoryName}-pipeline
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Checkout
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
+              Configuration:
+                Owner:
+                  Ref: RepositoryOwner
+                Repo:
+                  Ref: RepositoryName
+                Branch:
+                  Ref: RepositoryBranch
+                OAuthToken: "{{resolve:ssm:/github/personal_access_token:1}}"
+              OutputArtifacts:
+                - Name: SourceOutput
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: CodeBuildAppProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+        - Name: Package
+          Actions:
+            - Name: Package
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: CodeBuildPackageProject
+              InputArtifacts:
+                - Name: BuildOutput
+              OutputArtifacts:
+                - Name: PackageOutput
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CodeDeploy
+                Version: 1
+              Configuration:
+                ApplicationName:
+                  Ref: CodeDeployApplication
+                DeploymentGroupName:
+                  Ref: CodeDeployDeploymentGroup
+              InputArtifacts:
+                - Name: PackageOutput
+      RoleArn:
+        Fn::GetAtt: CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location:
+          Ref: ArtifactsBucket
+
+  CodeBuildAppProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${RepositoryName}-app-build
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Cache:
+        Location:
+          Fn::Sub: ${ArtifactsBucket}/cache
+        Type: S3
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/ruby:2.5.3
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yaml
+
+  CodeBuildPackageProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${RepositoryName}-app-package
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-package.yaml
+      Artifacts:
+        Type: CODEPIPELINE
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/docker:18.09.0
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value:
+              Ref: ArtifactsBucket
+          - Name: ECR_REPO
+            Value:
+              Fn::Sub: ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppRepository}
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName:
+        Ref: RepositoryName
+      ComputePlatform: Server
+
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      DeploymentGroupName: web-servers
+      ApplicationName:
+        Ref: RepositoryName
+      DeploymentStyle:
+        DeploymentType: IN_PLACE
+        DeploymentOption: WITHOUT_TRAFFIC_CONTROL
+      DeploymentConfigName: CodeDeployDefault.OneAtATime
+      OnPremisesInstanceTagFilters:
+        - Key: Environment
+          Value: staging
+          Type: KEY_AND_VALUE
+      ServiceRoleArn:
+        Fn::GetAtt: CodeDeployServiceRole.Arn
+
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
+
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: codepipeline.${RepositoryName}.${AWS::Region}
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteBuildArtifactsAfterOneWeek
+            ExpirationInDays: 7
+            Status: Enabled
+
+  AppRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName:
+        Ref: RepositoryName
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelineTrustPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - Fn::GetAtt: CodeBuildAppProject.Arn
+                  - Fn::GetAtt: CodeBuildPackageProject.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
+              - Effect: Allow
+                Action:
+                  - codedeploy:CreateDeployment
+                  - codedeploy:GetApplication
+                  - codedeploy:GetApplicationRevision
+                  - codedeploy:GetDeployment
+                  - codedeploy:GetDeploymentConfig
+                  - codedeploy:RegisterApplicationRevision
+                Resource:
+                  - "*"
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildTrustPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-build
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-build:*
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-package
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-package:*
+              - Effect: Allow
+                Action:
+                  # TODO: Be more restrictive
+                  - ecr:*
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
