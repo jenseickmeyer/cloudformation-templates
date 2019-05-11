@@ -66,26 +66,11 @@ Resources:
                 Version: 1
               Configuration:
                 ProjectName:
-                  Ref: CodeBuildAppProject
+                  Ref: CodeBuildProject
               InputArtifacts:
                 - Name: SourceOutput
               OutputArtifacts:
                 - Name: BuildOutput
-        - Name: Package
-          Actions:
-            - Name: Package
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: 1
-              Configuration:
-                ProjectName:
-                  Ref: CodeBuildPackageProject
-              InputArtifacts:
-                - Name: BuildOutput
-              OutputArtifacts:
-                - Name: PackageOutput
         - Name: Deploy
           Actions:
             - Name: Deploy
@@ -100,7 +85,7 @@ Resources:
                 DeploymentGroupName:
                   Ref: CodeDeployDeploymentGroup
               InputArtifacts:
-                - Name: PackageOutput
+                - Name: BuildOutput
       RoleArn:
         Fn::GetAtt: CodePipelineServiceRole.Arn
       ArtifactStore:
@@ -108,35 +93,14 @@ Resources:
         Location:
           Ref: ArtifactsBucket
 
-  CodeBuildAppProject:
+  CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name:
         Fn::Sub: ${RepositoryName}-app-build
-      ServiceRole:
-        Fn::GetAtt: CodeBuildServiceRole.Arn
-      Artifacts:
-        Type: CODEPIPELINE
-      Cache:
-        Location:
-          Fn::Sub: ${ArtifactsBucket}/cache
-        Type: S3
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/ruby:2.5.3
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yaml
-
-  CodeBuildPackageProject:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name:
-        Fn::Sub: ${RepositoryName}-app-package
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: buildspec-package.yaml
       Artifacts:
         Type: CODEPIPELINE
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
@@ -230,8 +194,7 @@ Resources:
                   - codebuild:BatchGetBuilds
                   - codebuild:StartBuild
                 Resource:
-                  - Fn::GetAtt: CodeBuildAppProject.Arn
-                  - Fn::GetAtt: CodeBuildPackageProject.Arn
+                  - Fn::GetAtt: CodeBuildProject.Arn
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -276,8 +239,6 @@ Resources:
                 Resource:
                   - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-build
                   - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-build:*
-                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-package
-                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-app-package:*
               - Effect: Allow
                 Action:
                   # TODO: Be more restrictive
