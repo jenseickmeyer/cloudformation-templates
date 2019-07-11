@@ -14,28 +14,6 @@ Parameters:
     Type: String
     Description: The name of the branch.
     Default: master
-  BuildEnvironment:
-    Type: String
-    Description: The build environment used by CodeBuild.
-    AllowedValues:
-      - java8
-      - nodejs8.11
-      - python2.7
-      - python3.6
-      - ruby2.5
-
-Mappings:
-  BuildEnvironmentsMap:
-    java8:
-      image: aws/codebuild/java:openjdk-8
-    nodejs8.11:
-      image: aws/codebuild/nodejs:8.11.0
-    python2.7:
-      image: aws/codebuild/python:2.7.12
-    python3.6:
-      image: aws/codebuild/python:3.6.5
-    ruby2.5:
-      image: aws/codebuild/ruby:2.5.1
 
 Resources:
 
@@ -120,7 +98,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: !FindInMap [ BuildEnvironmentsMap, !Ref BuildEnvironment, image ]
+        Image: aws/codebuild/standard:2.0
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value: !Ref ArtifactsBucket

@@ -33,7 +33,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/docker:17.09.0
+        Image: aws/codebuild/standard:2.0
         EnvironmentVariables:
           - Name: AWS_DEFAULT_REGION
             Value: !Sub ${AWS::Region}

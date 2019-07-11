@@ -4,42 +4,12 @@ Parameters:
   ArtifactsBucket:
     Type: String
     Description: The S3 bucket into which build artifacts are be stored
-  Environment:
-    Type: String
-    AllowedValues:
-      - docker
-      - go1.10
-      - java8
-      - java9
-      - nodejs8.11.0
-      - nodejs6.3.1
-      - python2.7
-      - python3.6
   ProjectName:
     Type: String
     Description: The name of the CodeBuild project
   RepositoryURL:
     Type: String
     Description: The HTTPS clone URL to the repository at GitHub
-
-Mappings:
-  EnvironmentType:
-    docker:
-      image: aws/codebuild/docker:17.09.0
-    go1.10:
-      image: aws/codebuild/golang:1.10
-    java8:
-      image: aws/codebuild/java:openjdk-8
-    java9:
-      image: aws/codebuild/java:openjdk-9
-    nodejs8.11.0:
-      image: aws/codebuild/nodejs:8.11.0
-    nodejs6.3.1:
-      image: aws/codebuild/nodejs:6.3.1
-    python2.7:
-      image: aws/codebuild/python:2.7.12
-    python3.6:
-      image: aws/codebuild/python:3.6.5
 
 Resources:
 
@@ -59,7 +29,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: !FindInMap [ EnvironmentType, !Ref Environment, image ]
+        Image: aws/codebuild/standard:2.0
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
