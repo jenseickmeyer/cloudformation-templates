@@ -82,6 +82,7 @@ Resources:
           AcmCertificateArn:
             Ref: WebsiteCertificate
           SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2018
 
   WebsiteCloudFrontOAI:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
