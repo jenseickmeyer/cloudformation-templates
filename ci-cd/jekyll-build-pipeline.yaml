@@ -191,7 +191,8 @@ Resources:
   ArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub codepipeline.${RepositoryName}.${AWS::Region}
+      BucketName:
+        Fn::Sub: codepipeline.${RepositoryName}.${AWS::Region}
       LifecycleConfiguration:
         Rules:
           - Id: DeleteBuildArtifactsAfterOneWeek
