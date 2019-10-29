@@ -20,7 +20,8 @@ Resources:
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: !Sub ${RepositoryName}-pipeline
+      Name:
+        Fn::Sub: ${RepositoryName}-pipeline
       Stages:
         - Name: Source
           Actions:
@@ -31,9 +32,12 @@ Resources:
                 Provider: GitHub
                 Version: 1
               Configuration:
-                Owner: !Ref RepositoryOwner
-                Repo: !Ref RepositoryName
-                Branch: !Ref RepositoryBranch
+                Owner:
+                  Ref: RepositoryOwner
+                Repo:
+                  Ref: RepositoryName
+                Branch:
+                  Ref: RepositoryBranch
                 OAuthToken: "{{resolve:ssm:/github/personal_access_token:1}}"
               OutputArtifacts:
               - Name: SourceOutput
@@ -46,7 +50,8 @@ Resources:
                 Provider: CodeBuild
                 Version: 1
               Configuration:
-                ProjectName: !Ref CodeBuildProject
+                ProjectName:
+                  Ref: CodeBuildProject
               InputArtifacts:
                 - Name: SourceOutput
               OutputArtifacts:
@@ -63,9 +68,12 @@ Resources:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: BuildOutput::sam-template-output.yaml
-                ChangeSetName: !Sub ${RepositoryName}-changeset
-                StackName: !Sub ${RepositoryName}-dev
-                RoleArn: !GetAtt CloudFormationServiceRole.Arn
+                ChangeSetName:
+                  Fn::Sub: ${RepositoryName}-changeset
+                StackName:
+                  Fn::Sub: ${RepositoryName}-dev
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
               InputArtifacts:
                 - Name: BuildOutput
               RunOrder: 1
@@ -77,31 +85,38 @@ Resources:
                 Version: 1
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
-                ChangeSetName: !Sub ${RepositoryName}-changeset
-                StackName: !Sub ${RepositoryName}-dev
+                ChangeSetName:
+                  Fn::Sub: ${RepositoryName}-changeset
+                StackName:
+                  Fn::Sub: ${RepositoryName}-dev
               RunOrder: 2
-      RoleArn: !GetAtt  CodePipelineServiceRole.Arn
+      RoleArn:
+        Fn::GetAtt:  CodePipelineServiceRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref ArtifactsBucket
+        Location:
+          Ref: ArtifactsBucket
 
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub ${RepositoryName}-build
+      Name:
+        Fn::Sub: ${RepositoryName}-build
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yaml
       Artifacts:
         Type: CODEPIPELINE
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:2.0
         EnvironmentVariables:
           - Name: S3_BUCKET
-            Value: !Ref ArtifactsBucket
+            Value:
+              Ref: ArtifactsBucket
       Cache:
         Type: S3
         Location:
@@ -110,7 +125,8 @@ Resources:
   ArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub codepipeline.${RepositoryName}.${AWS::Region}
+      BucketName:
+        Fn::Sub: codepipeline.${RepositoryName}.${AWS::Region}
       LifecycleConfiguration:
         Rules:
           - Id: DeleteBuildArtifactsAfterOneWeek
@@ -139,7 +155,7 @@ Resources:
                   - codebuild:BatchGetBuilds
                   - codebuild:StartBuild
                 Resource:
-                  - !GetAtt CodeBuildProject.Arn
+                  - Fn::GetAtt: CodeBuildProject.Arn
               - Effect: Allow
                 Action:
                   - cloudformation:DescribeStacks
@@ -158,15 +174,15 @@ Resources:
                 Action:
                   - iam:PassRole
                 Resource:
-                  - !GetAtt CloudFormationServiceRole.Arn
+                  - Fn::GetAtt: CloudFormationServiceRole.Arn
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:PutObject
                 Resource:
-                  - !GetAtt ArtifactsBucket.Arn
-                  - !Sub arn:aws:s3:::${ArtifactsBucket}/*
+                  - Fn::GetAtt: ArtifactsBucket.Arn
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -194,15 +210,15 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build:*
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build:*
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:PutObject
                 Resource:
-                  - !Sub arn:aws:s3:::${ArtifactsBucket}/*
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
 
   #
   # Service role according to https://docs.aws.amazon.com/lambda/latest/dg/build-pipeline.html
@@ -237,12 +253,12 @@ Resources:
                 Action:
                   - s3:PutObject
                 Resource:
-                  - !Sub arn:aws:s3:::${ArtifactsBucket}/*
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
               - Effect: Allow
                 Action:
                   - lambda:*
                 Resource:
-                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+                  - Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
               - Effect: Allow
                 Action:
                   - lambda:GetEventSourceMapping
@@ -254,7 +270,7 @@ Resources:
                 Action:
                   - apigateway:*
                 Resource:
-                  - !Sub arn:aws:apigateway:${AWS::Region}::*
+                  - Fn::Sub: arn:aws:apigateway:${AWS::Region}::*
               - Effect: Allow
                 Action:
                   - sns:*
@@ -272,14 +288,14 @@ Resources:
                   - iam:DeleteRole
                   - iam:PutRolePolicy
                 Resource:
-                  - !Sub arn:aws:iam::${AWS::AccountId}:role/*
+                  - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/*
               - Effect: Allow
                 Action:
                   - iam:AttachRolePolicy
                   - iam:DeleteRolePolicy
                   - iam:DetachRolePolicy
                 Resource:
-                  - !Sub arn:aws:iam::${AWS::AccountId}:role/*
+                  - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/*
               - Effect: Allow
                 Action:
                   - iam:PassRole
@@ -289,32 +305,32 @@ Resources:
                 Action:
                   - cloudformation:CreateChangeSet
                 Resource:
-                  - !Sub arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31
-                  - !Sub arn:aws:cloudformation:${AWS::Region}:aws:transform/Include
+                  - Fn::Sub: arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31
+                  - Fn::Sub: arn:aws:cloudformation:${AWS::Region}:aws:transform/Include
               - Effect: Allow
                 Action:
                   - codedeploy:CreateApplication
                   - codedeploy:DeleteApplication
                   - codedeploy:RegisterApplicationRevision
                 Resource:
-                  - !Sub arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:*
+                  - Fn::Sub: arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:*
               - Effect: Allow
                 Action:
                   - codedeploy:CreateDeploymentGroup
                   - codedeploy:CreateDeployment
                   - codedeploy:GetDeployment
                 Resource:
-                  - !Sub arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:*
+                  - Fn::Sub: arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:*
               - Effect: Allow
                 Action:
                   - codedeploy:GetDeploymentConfig
                 Resource:
-                  - !Sub arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:*
+                  - Fn::Sub: arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:*
               - Effect: Allow
                 Action:
                   - dynamodb:*
                 Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*
+                  - Fn::Sub: arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*
               - Effect: Allow
                 Action:
                   - ec2:DescribeVpcs
