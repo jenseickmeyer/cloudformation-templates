@@ -68,6 +68,7 @@ Resources:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: BuildOutput::sam-template-output.yaml
+                TemplateConfiguration: BuildOutput::config-dev.json
                 ChangeSetName:
                   Fn::Sub: ${RepositoryName}-changeset
                 StackName:
