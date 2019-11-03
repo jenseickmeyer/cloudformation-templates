@@ -72,6 +72,8 @@ Resources:
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: BuildOutput::sam-template-output.yaml
                 TemplateConfiguration: BuildOutput::config-dev.json
+                ParameterOverrides:
+                  Fn::Sub: '{ "StageName": "dev", "S3BucketName": "${ArtifactsBucket}" }'
                 ChangeSetName:
                   Fn::Sub: ${RepositoryName}-changeset
                 StackName:
@@ -118,6 +120,8 @@ Resources:
                 Capabilities: CAPABILITY_IAM
                 TemplatePath: BuildOutput::sam-template-output.yaml
                 TemplateConfiguration: BuildOutput::config-prod.json
+                ParameterOverrides:
+                  Fn::Sub: '{ "StageName": "prod", "S3BucketName": "${ArtifactsBucket}" }'
                 ChangeSetName:
                   Fn::Sub: ${RepositoryName}-changeset
                 StackName:
