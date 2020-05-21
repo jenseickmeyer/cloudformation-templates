@@ -10,6 +10,10 @@ Parameters:
     Type: String
     Description: The instance type to use for the EC2 instance
     Default: t3.nano
+  AMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: The AMI for the bastion host
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
     Description: The name of the SSH key pair
@@ -41,7 +45,8 @@ Resources:
       LaunchTemplateData:
         InstanceType:
           Ref: InstanceType
-        ImageId: ami-034fffcc6a0063961
+        ImageId:
+          Ref: AMI
         SecurityGroupIds:
           - Fn::ImportValue:
               Fn::Sub: ${NetworkStackName}-BastionHostSecurityGroup
