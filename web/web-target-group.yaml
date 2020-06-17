@@ -16,9 +16,6 @@ Parameters:
   Hostname:
     Type: String
     Description: The hostname for which requests are handled
-  CertificateArn:
-    Type: String
-    Description: The ARN of the SSL certificate
   ListenerRulePriority:
     Type: Number
     Description: The priority of the listener rule
@@ -137,7 +134,7 @@ Resources:
     Properties:
       Certificates:
         - CertificateArn:
-            Ref: CertificateArn
+            Ref: Certificate
       ListenerArn:
         Fn::ImportValue:
           Fn::Sub: ${LoadBalancerStackName}-Listener
@@ -156,6 +153,18 @@ Resources:
       VpcId:
         Fn::ImportValue:
           Fn::Sub: ${NetworkStackName}-VpcId
+
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName:
+        Ref: Hostname
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName:
+            Ref: Hostname
+          HostedZoneId:
+            Ref: HostedZone
 
   DNSRecord:
     Type: AWS::Route53::RecordSet
