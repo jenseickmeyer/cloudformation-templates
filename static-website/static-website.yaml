@@ -45,9 +45,10 @@ Resources:
       DomainName:
         Ref: DomainName
       ValidationMethod: DNS
-      Tags:
-        - Key: HostedZoneId
-          Value:
+      DomainValidationOptions:
+        - DomainName:
+            Ref: DomainName
+          HostedZoneId:
             Ref: HostedZoneId
 
   WebsiteCDN:
