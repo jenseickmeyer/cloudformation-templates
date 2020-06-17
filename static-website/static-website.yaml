@@ -15,6 +15,11 @@ Resources:
     Properties:
       BucketName:
         Fn::Sub: "site-${DomainName}-contents"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   WebsiteLoggingBucket:
     Type: AWS::S3::Bucket
@@ -22,6 +27,11 @@ Resources:
     Properties:
       BucketName:
         Fn::Sub: "site-${DomainName}-logs"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   WebsiteContentBucketPolicy:
     Type: AWS::S3::BucketPolicy
