@@ -8,9 +8,6 @@ Parameters:
   Domain:
     Type: String
     Description: The Domain name for the API
-  Certificate:
-    Type: String
-    Description: The ARN Certificate
 
 Resources:
 
@@ -24,6 +21,18 @@ Resources:
       EndpointConfiguration:
         Types:
           - EDGE
+
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName:
+        Ref: Domain
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName:
+            Ref: Domain
+          HostedZoneId:
+            Ref: HostedZoneId
 
   RecordSet:
     Type: AWS::Route53::RecordSet
