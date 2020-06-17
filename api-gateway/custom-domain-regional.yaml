@@ -21,6 +21,7 @@ Resources:
       EndpointConfiguration:
         Types:
           - REGIONAL
+      SecurityPolicy: TLS_1_2
 
   Certificate:
     Type: AWS::CertificateManager::Certificate
