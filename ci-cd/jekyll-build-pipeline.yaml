@@ -135,7 +135,7 @@ Resources:
               - "phases:\n"
               - "  install:\n"
               - "    runtime-versions:\n"
-              - "      ruby: 2.6\n"
+              - "      ruby: 2.7\n"
               - "    commands:\n"
               - "      - bundle install\n"
               - "  build:\n"
