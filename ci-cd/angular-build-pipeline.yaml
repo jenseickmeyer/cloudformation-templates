@@ -1,0 +1,320 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+
+  RepositoryOwner:
+    Type: String
+    Description: The owner of the GitHub repository.
+  RepositoryName:
+    Type: String
+    Description: The name of the GitHub repository.
+  RepositoryBranch:
+    Type: String
+    Description: The name of the branch.
+    Default: master
+  StaticWebsiteStackName:
+    Type: String
+    Description: The name of the CloudFormation stack of the static website
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Repository
+        Parameters:
+          - RepositoryOwner
+          - RepositoryName
+          - RepositoryBranch
+      - Label:
+          default: Website
+        Parameters:
+          - StaticWebsiteStackName
+    ParameterLabels:
+      RepositoryOwner:
+        default: Owner
+      RepositoryName:
+        default: Name
+      RepositoryBranch:
+        default: Branch
+      StaticWebsiteStackName:
+        default: Stack Name
+
+Resources:
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name:
+        Fn::Sub: ${RepositoryName}-pipeline
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Checkout
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
+              Configuration:
+                Owner:
+                  Ref: RepositoryOwner
+                Repo:
+                  Ref: RepositoryName
+                Branch:
+                  Ref: RepositoryBranch
+                OAuthToken: "{{resolve:ssm:/github/personal_access_token:1}}"
+              OutputArtifacts:
+                - Name: SourceOutput
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: CodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              Configuration:
+                BucketName:
+                  Fn::ImportValue:
+                    Fn::Sub: ${StaticWebsiteStackName}-WebsiteContentBucket
+                Extract: true
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+            - Name: Invalidate
+              ActionTypeId:
+                Category: Invoke
+                Owner: AWS
+                Provider: Lambda
+                Version: 1
+              Configuration:
+                FunctionName:
+                  Ref: CloudFrontDistributionInvalidationFunction
+              RunOrder: 2
+      RoleArn:
+        Fn::GetAtt: CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location:
+          Ref: ArtifactsBucket
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${RepositoryName}-build
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec:
+          Fn::Join:
+            - ''
+            - - "version: 0.2\n"
+              - "phases:\n"
+              - "  install:\n"
+              - "    runtime-versions:\n"
+              - "      nodejs: 12\n"
+              - "    commands:\n"
+              - "      - npm install -g @angular/cli@10\n"
+              - "      - npm install\n"
+              - "  build:\n"
+              - "    commands:\n"
+              - "      - ng build --prod=true --outputPath=dist\n"
+              - "artifacts:\n"
+              - "  base-directory: 'dist'\n"
+              - "  files:\n"
+              - "    - '**/*'\n"
+
+  CloudFrontDistributionInvalidationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs12.x
+      Handler: index.handler
+      Timeout: 5
+      Role:
+        Fn::GetAtt: CloudFrontDistributionInvalidationFunctionRole.Arn
+      Code:
+        ZipFile:
+          Fn::Join:
+            - "\n"
+            - - "const aws = require('aws-sdk');"
+              - ""
+              - "const DistributionId = process.env.DISTRIBUTION_ID;"
+              - ""
+              - "exports.handler = async (event) => {"
+              - "  const codepipeline = new aws.CodePipeline();"
+              - "  const cloudfront = new aws.CloudFront();"
+              - "  "
+              - "  const jobId = event['CodePipeline.job'].id;"
+              - "  "
+              - "  const params = {"
+              - "    DistributionId: DistributionId,"
+              - "    InvalidationBatch: {"
+              - "      Paths: {"
+              - "        Quantity: 1,"
+              - "        Items: [ '/*' ]"
+              - "      },"
+              - "      CallerReference: new Date().toISOString()"
+              - "    }"
+              - "  };"
+              - "  await cloudfront.createInvalidation(params).promise();"
+              - "  "
+              - "  await codepipeline.putJobSuccessResult({ jobId: jobId }).promise();"
+              - "};"
+      Environment:
+        Variables:
+          DISTRIBUTION_ID:
+            Fn::ImportValue:
+              Fn::Sub: ${StaticWebsiteStackName}-CloudFrontDistributionId
+
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: codepipeline.${RepositoryName}.${AWS::Region}
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteBuildArtifactsAfterOneWeek
+            ExpirationInDays: 7
+            Status: Enabled
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelineTrustPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - Fn::GetAtt: CodeBuildProject.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub:
+                      - arn:aws:s3:::${SiteBucket}
+                      - SiteBucket:
+                          Fn::ImportValue:
+                            Fn::Sub: ${StaticWebsiteStackName}-WebsiteContentBucket
+                  - Fn::Sub:
+                      - arn:aws:s3:::${SiteBucket}/*
+                      - SiteBucket:
+                          Fn::ImportValue:
+                            Fn::Sub: ${StaticWebsiteStackName}-WebsiteContentBucket
+              - Effect: Allow
+                Action:
+                  - lambda:ListFunctions
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - Fn::GetAtt: CloudFrontDistributionInvalidationFunction.Arn
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildTrustPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build:*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
+
+  CloudFrontDistributionInvalidationFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CloudFrontDistributionInvalidationPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                Resource:
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - codepipeline:PutJobSuccessResult
+                Resource:
+                  - "*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
