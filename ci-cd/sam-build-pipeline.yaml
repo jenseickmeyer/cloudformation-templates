@@ -4,6 +4,9 @@ Description: A CI/CD pipeline for building and deploying SAM applications.
 
 Parameters:
 
+  SourceConnectionArn:
+    Type: String
+    Description: The ARN of the connection to the external source code repository
   RepositoryOwner:
     Type: String
     Description: The owner of the GitHub repository.
@@ -28,19 +31,19 @@ Resources:
             - Name: Checkout
               ActionTypeId:
                 Category: Source
-                Owner: ThirdParty
-                Provider: GitHub
+                Owner: AWS
+                Provider: CodeStarSourceConnection
                 Version: 1
               Configuration:
-                Owner:
-                  Ref: RepositoryOwner
-                Repo:
-                  Ref: RepositoryName
-                Branch:
+                ConnectionArn:
+                  Ref: SourceConnectionArn
+                FullRepositoryId:
+                  Fn::Sub: ${RepositoryOwner}/${RepositoryName}
+                BranchName:
                   Ref: RepositoryBranch
-                OAuthToken: "{{resolve:ssm:/github/personal_access_token:1}}"
+                OutputArtifactFormat: CODE_ZIP
               OutputArtifacts:
-              - Name: SourceOutput
+                - Name: SourceOutput
         - Name: Build
           Actions:
             - Name: Build
@@ -155,6 +158,11 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - codestar-connections:UseConnection
+                Resource:
+                  Ref: SourceConnectionArn
+              - Effect: Allow
+                Action:
                   - codebuild:BatchGetBuilds
                   - codebuild:StartBuild
                 Resource:
@@ -183,6 +191,7 @@ Resources:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:PutObject
+                  - s3:PutObjectAcl
                 Resource:
                   - Fn::GetAtt: ArtifactsBucket.Arn
                   - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
