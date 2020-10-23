@@ -231,6 +231,13 @@ Resources:
                   - s3:PutObject
                 Resource:
                   - Fn::Sub: arn:aws:s3:::${ArtifactsBucket}/*
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                Resource: "*"
 
   #
   # Service role according to https://docs.aws.amazon.com/lambda/latest/dg/build-pipeline.html
