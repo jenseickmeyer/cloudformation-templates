@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+  DomainName:
+    Type: String
+
+Resources:
+
+  WebsiteContentBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName:
+        Fn::Sub: "site-${DomainName}-contents"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  WebsiteLoggingBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName:
+        Fn::Sub: "site-${DomainName}-logs"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  WebsiteContentBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: WebsiteContentBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: "Allow"
+            Resource:
+              Fn::Sub: arn:aws:s3:::${WebsiteContentBucket}/*
+            Principal:
+              AWS:
+                Fn::Sub: "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${WebsiteCloudFrontOAI}"
+
+  WebsiteCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName:
+        Ref: DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName:
+            Ref: DomainName
+          HostedZoneId:
+            Ref: HostedZoneId
+
+  WebsiteCDN:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName:
+              Fn::Sub: "${WebsiteContentBucket}.s3.amazonaws.com"
+            Id: S3Origin
+            S3OriginConfig:
+              OriginAccessIdentity:
+                Fn::Sub: "origin-access-identity/cloudfront/${WebsiteCloudFrontOAI}"
+        DefaultRootObject: index.html
+        Enabled: true
+        Logging:
+          IncludeCookies: false
+          Bucket:
+            Fn::Sub: "${WebsiteLoggingBucket}.s3.amazonaws.com"
+          Prefix: logs
+        Aliases:
+          - Ref: DomainName
+        HttpVersion: http2
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ForwardedValues:
+            QueryString: false
+          Compress: true
+          ViewerProtocolPolicy: redirect-to-https
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          AcmCertificateArn:
+            Ref: WebsiteCertificate
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2018
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 600
+            ResponseCode: 200
+          - ErrorCode: 404
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 600
+            ResponseCode: 200
+
+  WebsiteCloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment:
+          Ref: DomainName
+
+  CDNRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Ref: HostedZoneId
+      Name:
+        Fn::Sub: "${DomainName}."
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName:
+          Fn::GetAtt: WebsiteCDN.DomainName
+
+Outputs:
+
+  WebsiteContentBucket:
+    Description: The S3 bucket from which the contents are delivered
+    Value:
+      Ref: WebsiteContentBucket
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-WebsiteContentBucket
+  WebsiteLoggingBucket:
+    Description: The S3 bucket to which the access logs are saved
+    Value:
+      Ref: WebsiteLoggingBucket
+  CloudFrontDistributionId:
+    Description: The ID of the CloudFront distribution
+    Value:
+      Ref: WebsiteCDN
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-CloudFrontDistributionId
